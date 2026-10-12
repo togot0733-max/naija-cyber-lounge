@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+<title>Naija Cyber Lounge · Comments</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; background:#fff; color:#262626; font-size:14px; -webkit-tap-highlight-color:transparent; }
+  .wrap { max-width:500px; margin:0 auto; background:#fff; min-height:100vh; }
+
+  /* TOPBAR */
+  .topbar { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid #efefef; position:sticky; top:0; background:#fff; z-index:10; }
+  .topbar-title { font-size:15px; font-weight:600; }
+  .topbar-icon { background:none; border:none; padding:6px; cursor:pointer; color:#262626; }
+  .topbar-btn { background:#0095f6; color:#fff; border:none; padding:6px 14px; border-radius:20px; font-size:13px; font-weight:600; cursor:pointer; }
+  .topbar-btn.outline { background:#fff; color:#0095f6; border:1px solid #0095f6; }
+
+  /* CAPTION */
+  .caption { display:flex; gap:12px; padding:12px 16px 8px; border-bottom:1px solid #efefef; }
+  .cap-body { flex:1; font-size:14px; line-height:1.5; }
+  .cap-name { font-weight:600; }
+  .cap-time { display:block; margin-top:6px; font-size:12px; color:#8e8e8e; }
+
+  /* AVATAR */
+  .avatar { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:600; font-size:12px; flex-shrink:0; overflow:hidden; }
+  .avatar.lg { width:44px; height:44px; font-size:15px; }
+  .avatar.sm { width:24px; height:24px; font-size:10px; }
+  .ring { padding:1.5px; border-radius:50%; background:linear-gradient(45deg,#f09433,#e6683c 25%,#dc2743 50%,#cc2366 75%,#bc1888); flex-shrink:0; }
+  .ring .avatar { border:1.5px solid #fff; width:100%; height:100%; }
+  .ring.lg { width:44px; height:44px; }
+  .ring.sm { width:24px; height:24px; }
+
+  /* COMMENT */
+  .comment { display:flex; gap:12px; padding:8px 16px; align-items:flex-start; }
+  .c-body { flex:1; min-width:0; padding-top:1px; }
+  .c-username { font-weight:600; margin-right:6px; cursor:pointer; }
+  .c-username:hover { color:#00376b; }
+  .c-verified { display:inline-block; width:12px; height:12px; vertical-align:-2px; margin-left:3px; color:#0095f6; }
+  .c-badge { display:inline-block; font-size:9px; font-weight:700; padding:1px 5px; border-radius:3px; text-transform:uppercase; margin-left:4px; vertical-align:1px; letter-spacing:0.03em; }
+  .c-badge.admin { background:#8b0020; color:#fff; }
+  .c-badge.vip { background:#10b981; color:#fff; }
+  .c-text { line-height:1.4; display:inline; word-wrap:break-word; }
+  .c-meta { display:flex; align-items:center; gap:14px; margin-top:6px; font-size:12px; color:#8e8e8e; }
+  .c-meta button { cursor:pointer; background:none; border:none; color:#8e8e8e; font-size:12px; font-weight:500; padding:0; font-family:inherit; }
+  .c-meta button:hover { color:#262626; }
+  .c-meta .reply { font-weight:600; }
+
+  .like-col { display:flex; flex-direction:column; align-items:center; padding-top:6px; flex-shrink:0; gap:3px; }
+  .heart { background:none; border:none; cursor:pointer; padding:4px; color:#8e8e8e; }
+  .heart svg { width:12px; height:12px; }
+  .heart.liked { color:#ed4956; }
+  .heart.liked svg { fill:#ed4956; stroke:#ed4956; }
+  .like-count { font-size:11px; color:#8e8e8e; }
+
+  .replies { padding-left:44px; }
+  .view-replies { display:flex; align-items:center; gap:12px; padding:8px 16px 12px 60px; cursor:pointer; color:#8e8e8e; font-size:13px; font-weight:600; }
+  .view-replies::before { content:""; display:block; width:24px; height:1px; background:#dbdbdb; }
+
+  /* AUDIO */
+  .audio-player { display:inline-flex; align-items:center; gap:8px; margin-top:8px; padding:6px 12px 6px 6px; background:#efefef; border-radius:20px; max-width:220px; }
+  .audio-play { width:28px; height:28px; border-radius:50%; background:#262626; color:#fff; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .audio-play.playing { background:#0095f6; }
+  .audio-wave { display:flex; align-items:center; gap:2px; height:18px; flex:1; }
+  .audio-wave span { width:2px; border-radius:1px; background:#c7c7c7; display:block; }
+  .audio-wave span.played { background:#262626; }
+  .audio-time { font-size:11px; color:#8e8e8e; font-variant-numeric:tabular-nums; }
+
+  /* ATTACHMENTS */
+  .attach { margin-top:8px; border-radius:12px; overflow:hidden; position:relative; border:1px solid #efefef; max-width:240px; background:#fafafa; }
+  .attach img, .attach video { width:100%; display:block; }
+  .attach audio { width:100%; }
+  .attach-tag { position:absolute; bottom:6px; left:6px; background:rgba(0,0,0,.65); color:#fff; font-size:10px; font-weight:600; padding:2px 6px; border-radius:4px; }
+
+  /* LIKED BY */
+  .liked-by { padding:12px 16px; font-size:14px; font-weight:600; border-top:1px solid #efefef; border-bottom:1px solid #efefef; }
+  .liked-by span { font-weight:400; }
+
+  /* COMPOSER */
+  .composer { position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:500px; background:#fff; border-top:1px solid #efefef; z-index:20; padding-bottom:env(safe-area-inset-bottom); }
+  .composer-row { display:flex; align-items:center; gap:10px; padding:10px 16px; }
+  .input { flex:1; background:#fafafa; border:1px solid #dbdbdb; border-radius:22px; padding:9px 16px; font-size:14px; outline:none; font-family:inherit; }
+  .input:focus { border-color:#a8a8a8; }
+  .post-btn { background:none; border:none; color:#0095f6; font-size:14px; font-weight:600; cursor:pointer; padding:4px 2px; flex-shrink:0; opacity:.35; pointer-events:none; font-family:inherit; }
+  .post-btn.active { opacity:1; pointer-events:auto; }
+  .tools-row { display:flex; align-items:center; gap:4px; padding:2px 16px 10px; border-top:1px solid #efefef; }
+  .tool { background:none; border:none; padding:8px; cursor:pointer; color:#262626; border-radius:8px; display:flex; align-items:center; justify-content:center; }
+  .tool:hover { background:#fafafa; }
+  .tool svg { width:22px; height:22px; }
+  .tool-gif { font-size:11px; font-weight:800; letter-spacing:.5px; border:1.5px solid #262626; border-radius:6px; padding:3px 7px; line-height:1; }
+  .tool.recording { background:#ed4956; color:#fff; }
+  .recording-bar { display:none; align-items:center; gap:8px; color:#ed4956; font-size:13px; font-weight:600; padding:0 16px 8px; }
+  .recording-bar.active { display:flex; }
+  .rec-dot { width:8px; height:8px; border-radius:50%; background:#ed4956; animation:blink 1s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .spacer { height:110px; }
+
+  /* MODAL */
+  .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:100; display:none; align-items:center; justify-content:center; padding:16px; }
+  .modal-bg.open { display:flex; }
+  .modal { background:#fff; border-radius:14px; width:100%; max-width:400px; padding:28px 24px; box-shadow:0 20px 60px rgba(0,0,0,.3); }
+  .modal h2 { font-size:22px; font-weight:700; text-align:center; margin-bottom:6px; }
+  .modal p.sub { font-size:13px; color:#8e8e8e; text-align:center; margin-bottom:20px; }
+  .modal input { width:100%; background:#fafafa; border:1px solid #dbdbdb; border-radius:8px; padding:11px 14px; font-size:14px; margin-bottom:10px; outline:none; font-family:inherit; }
+  .modal input:focus { border-color:#a8a8a8; background:#fff; }
+  .modal .btn { width:100%; background:#0095f6; color:#fff; border:none; border-radius:8px; padding:11px; font-size:14px; font-weight:600; cursor:pointer; margin-top:6px; font-family:inherit; }
+  .modal .btn:hover { background:#0084d8; }
+  .modal .btn:disabled { opacity:.5; cursor:not-allowed; }
+  .modal .switch { text-align:center; font-size:13px; color:#8e8e8e; margin-top:16px; }
+  .modal .switch a { color:#0095f6; font-weight:600; cursor:pointer; }
+  .modal .error { background:#ffebee; color:#c62828; font-size:12px; padding:8px 12px; border-radius:6px; margin-bottom:10px; display:none; }
+  .modal .error.show { display:block; }
+  .modal .close { position:absolute; top:12px; right:16px; background:none; border:none; font-size:24px; cursor:pointer; color:#8e8e8e; }
+
+  /* TOAST */
+  .toast { position:fixed; bottom:120px; left:50%; transform:translateX(-50%) translateY(20px); background:#262626; color:#fff; padding:10px 18px; border-radius:24px; font-size:13px; font-weight:500; opacity:0; transition:all .3s; pointer-events:none; z-index:200; }
+  .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+  /* LOADING */
+  .loading { text-align:center; padding:20px; color:#8e8e8e; font-size:13px; }
+
+  /* EMPTY */
+  .empty { text-align:center; padding:40px 20px; color:#8e8e8e; font-size:14px; }
+  .empty-icon { font-size:36px; margin-bottom:10px; opacity:.4; }
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+
+  <div class="topbar">
+    <button class="topbar-icon" aria-label="Back">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <div class="topbar-title">Comments</div>
+    <div id="authArea">
+      <button class="topbar-btn" id="loginBtn">Log in</button>
+    </div>
+  </div>
+
+  <div class="caption">
+    <div class="ring lg"><div class="avatar" style="background:linear-gradient(135deg,#c9b037,#4a5d1f)">MG</div></div>
+    <div class="cap-body">
+      <span class="cap-name">mama_g_alert</span>
+      <svg class="c-verified" viewBox="0 0 24 24" fill="currentColor"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91-1.01-1.01-2.52-1.27-3.91-.81C14.67 2.63 13.43 1.75 12 1.75S9.33 2.63 8.66 3.94c-1.39-.46-2.9-.2-3.91.81-1.01 1.01-1.27 2.52-.81 3.91C2.63 9.33 1.75 10.57 1.75 12s.88 2.67 2.19 3.34c-.46 1.39-.2 2.9.81 3.91 1.01 1.01 2.52 1.27 3.91.81.67 1.31 1.91 2.19 3.34 2.19s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81 1.01-1.01 1.27-2.52.81-3.91 1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg>
+      <br>
+      Good morning family. Quick reminder: no bank will ever call you to ask for your BVN, PIN, or OTP. 🌹
+      <span class="cap-time">2 hours ago</span>
+    </div>
+  </div>
+
+  <div class="liked-by">Liked by <span>tunde_kano</span> and <span>3,417 others</span></div>
+
+  <div id="commentsList">
+    <div class="loading">Loading comments…</div>
+  </div>
+
+  <div class="spacer"></div>
+</div>
+
+<!-- COMPOSER -->
+<div class="composer" id="composer" style="display:none;">
+  <div class="recording-bar" id="recordingBar">
+    <span class="rec-dot"></span>
+    <span>Recording voice note…</span>
+    <span id="recTime" style="margin-left:auto;font-variant-numeric:tabular-nums">0:00</span>
+  </div>
+  <div class="composer-row">
+    <div class="ring" style="width:32px;height:32px;"><div class="avatar" id="myAvatar" style="font-size:11px">Y</div></div>
+    <input type="text" id="commentInput" class="input" placeholder="Add a comment…" autocomplete="off">
+    <button class="post-btn" id="postBtn" type="button">Post</button>
+  </div>
+  <div class="tools-row">
+    <input type="file" id="galleryInput" accept="image/*" style="display:none">
+    <input type="file" id="videoInput" accept="video/*" style="display:none">
+    <button class="tool" id="galleryBtn" title="Attach image">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+    </button>
+    <button class="tool" id="audioBtn" title="Record voice note">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+    </button>
+    <button class="tool tool-gif" id="gifBtn" title="Add GIF">GIF</button>
+  </div>
+</div>
+
+<!-- AUTH MODAL -->
+<div class="modal-bg" id="authModal">
+  <div class="modal" style="position:relative">
+    <button class="close" id="closeModal">×</button>
+    <h2 id="modalTitle">Sign up</h2>
+    <p class="sub" id="modalSub">Join the conversation. It's free.</p>
+    <div class="error" id="modalError"></div>
+    <input type="text" id="mUsername" placeholder="Username (e.g. lagos_cyber_plug)">
+    <input type="email" id="mEmail" placeholder="Email">
+    <input type="password" id="mPassword" placeholder="Password (min 8 chars)">
+    <button class="btn" id="modalSubmit">Sign up</button>
+    <div class="switch" id="modalSwitch">
+      Already have an account? <a id="switchLink">Log in</a>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   SUPABASE CONFIG
+   ============================================================ */
+const SUPABASE_URL = 'https://dcvftuzzzdzddgitbfey.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_36HzHB6fc_3MTDwTPVrQpQ_noat6EQZ';
+const POST_SLUG    = 'bvn-fraud-victims';
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* ============================================================
+   STATE
+   ============================================================ */
+let currentUser = null;   // { id, username, display_name, badge, avatar_url }
+let currentMode = 'signup';
+let realtimeChannel = null;
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function escapeHTML(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function timeAgo(iso) {
+  const s = Math.floor((Date.now() - new Date(iso)) / 1000);
+  if (s < 60) return s + 's';
+  if (s < 3600) return Math.floor(s/60) + 'm';
+  if (s < 86400) return Math.floor(s/3600) + 'h';
+  return Math.floor(s/86400) + 'd';
+}
+
+function avatarGradient(id) {
+  const grads = [
+    'linear-gradient(135deg,#e84a6a,#8b0020)',
+    'linear-gradient(135deg,#6ee7b7,#059669)',
+    'linear-gradient(135deg,#d4c453,#6b6320)',
+    'linear-gradient(135deg,#93c5fd,#2563eb)',
+    'linear-gradient(135deg,#c4b5fd,#7c3aed)',
+    'linear-gradient(135deg,#fda4af,#be123c)',
+  ];
+  let h = 0;
+  for (let i = 0; i < (id||'').length; i++) h = (h*31 + id.charCodeAt(i)) >>> 0;
+  return grads[h % grads.length];
+}
+
+function initials(name) {
+  if (!name) return '?';
+  return name.replace(/[^a-zA-Z]/g,'').slice(0,2).toUpperCase() || '?';
+}
+
+/* ============================================================
+   AUTH
+   ============================================================ */
+async function loadSession() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session?.user) {
+    await loadProfile(session.user.id);
+  }
+  renderAuthArea();
+}
+
+async function loadProfile(userId) {
+  const { data, error } = await sb.from('profiles').select('*').eq('id', userId).single();
+  if (!error && data) currentUser = data;
+}
+
+function renderAuthArea() {
+  const area = document.getElementById('authArea');
+  const composer = document.getElementById('composer');
+
+  if (currentUser) {
+    area.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="ring" style="width:32px;height:32px"><div class="avatar" style="font-size:11px;background:${avatarGradient(currentUser.id)}">${initials(currentUser.username)}</div></div>
+        <button class="topbar-btn outline" id="logoutBtn" style="font-size:12px;padding:5px 10px">Log out</button>
+      </div>`;
+    document.getElementById('logoutBtn').onclick = async () => {
+      await sb.auth.signOut();
+      currentUser = null;
+      renderAuthArea();
+      toast('Logged out');
+    };
+
+    // Show composer, update avatar
+    composer.style.display = 'block';
+    const myAv = document.getElementById('myAvatar');
+    myAv.textContent = initials(currentUser.username);
+    myAv.style.background = avatarGradient(currentUser.id);
+  } else {
+    area.innerHTML = `<button class="topbar-btn" id="loginBtn">Log in</button>`;
+    document.getElementById('loginBtn').onclick = () => openModal('login');
+    composer.style.display = 'none';
+  }
+}
+
+function openModal(mode) {
+  currentMode = mode;
+  const modal = document.getElementById('authModal');
+  document.getElementById('modalTitle').textContent = mode === 'signup' ? 'Sign up' : 'Log in';
+  document.getElementById('modalSub').textContent = mode === 'signup' ? "Join the conversation. It's free." : 'Welcome back.';
+  document.getElementById('modalSubmit').textContent = mode === 'signup' ? 'Sign up' : 'Log in';
+  document.getElementById('mUsername').style.display = mode === 'signup' ? 'block' : 'none';
+  document.getElementById('modalSwitch').innerHTML = mode === 'signup'
+    ? 'Already have an account? <a id="switchLink">Log in</a>'
+    : 'No account? <a id="switchLink">Sign up</a>';
+  document.getElementById('modalError').classList.remove('show');
+  document.getElementById('switchLink').onclick = () => openModal(mode === 'signup' ? 'login' : 'signup');
+  modal.classList.add('open');
+}
+
+document.getElementById('closeModal').onclick = () => document.getElementById('authModal').classList.remove('open');
+document.getElementById('authModal').onclick = (e) => { if (e.target.id === 'authModal') e.currentTarget.classList.remove('open'); };
+
+document.getElementById('modalSubmit').onclick = async () => {
+  const errEl = document.getElementById('modalError');
+  errEl.classList.remove('show');
+  const email = document.getElementById('mEmail').value.trim();
+  const password = document.getElementById('mPassword').value;
+  const username = document.getElementById('mUsername').value.trim();
+
+  if (!email || !password) { errEl.textContent = 'Email and password required'; errEl.classList.add('show'); return; }
+  if (password.length < 8) { errEl.textContent = 'Password must be 8+ characters'; errEl.classList.add('show'); return; }
+
+  const btn = document.getElementById('modalSubmit');
+  btn.disabled = true;
+  btn.textContent = 'Please wait…';
+
+  if (currentMode === 'signup') {
+    if (!username || username.length < 3) { errEl.textContent = 'Username must be 3+ characters'; errEl.classList.add('show'); btn.disabled=false; btn.textContent='Sign up'; return; }
+    const { data, error } = await sb.auth.signUp({
+      email, password,
+      options: { data: { username, display_name: username } }
+    });
+    if (error) { errEl.textContent = error.message; errEl.classList.add('show'); btn.disabled=false; btn.textContent='Sign up'; return; }
+    // Wait a beat for trigger to create profile
+    await new Promise(r => setTimeout(r, 800));
+    await loadProfile(data.user.id);
+    document.getElementById('authModal').classList.remove('open');
+    toast('Welcome, @' + username + '!');
+    renderAuthArea();
+    loadComments();
+  } else {
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) { errEl.textContent = error.message; errEl.classList.add('show'); btn.disabled=false; btn.textContent='Log in'; return; }
+    await loadProfile(data.user.id);
+    document.getElementById('authModal').classList.remove('open');
+    toast('Welcome back, @' + currentUser.username + '!');
+    renderAuthArea();
+    loadComments();
+  }
+  btn.disabled = false;
+};
+
+/* ============================================================
+   COMMENTS — LOAD & RENDER
+   ============================================================ */
+async function loadComments() {
+  const list = document.getElementById('commentsList');
+  list.innerHTML = '<div class="loading">Loading comments…</div>';
+
+  const { data, error } = await sb
+    .from('comments')
+    .select(`
+      id, body, media_url, media_type, media_duration_sec,
+      is_pinned, reaction_count, reply_count, parent_id, created_at,
+      author:profiles!comments_author_id_fkey(id, username, display_name, avatar_url, badge)
+    `)
+    .eq('post_slug', POST_SLUG)
+    .eq('is_hidden', false)
+    .order('is_pinned', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(50);
+
+  if (error) {
+    list.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>Could not load comments. Check console.</div>';
+    console.error(error);
+    return;
+  }
+
+  // Get user's reactions to mark hearts
+  let myReactions = new Set();
+  if (currentUser) {
+    const { data: rxs } = await sb.from('reactions').select('comment_id').eq('user_id', currentUser.id);
+    (rxs || []).forEach(r => myReactions.add(r.comment_id));
+  }
+
+  if (!data || data.length === 0) {
+    list.innerHTML = '<div class="empty"><div class="empty-icon">💬</div>Be the first to comment</div>';
+    return;
+  }
+
+  // Separate top-level from replies
+  const top = data.filter(c => !c.parent_id);
+  const repliesByParent = {};
+  data.filter(c => c.parent_id).forEach(c => {
+    (repliesByParent[c.parent_id] = repliesByParent[c.parent_id] || []).push(c);
+  });
+
+  list.innerHTML = top.map(c => renderComment(c, myReactions, false) +
+    (repliesByParent[c.id] ? `
+      <div class="view-replies" data-toggle="${c.id}">
+        View ${repliesByParent[c.id].length} ${repliesByParent[c.id].length === 1 ? 'reply' : 'replies'}
+      </div>
+      <div class="replies" id="replies-${c.id}" style="display:none">
+        ${repliesByParent[c.id].map(r => renderComment(r, myReactions, true)).join('')}
+      </div>
+    ` : '')
+  ).join('');
+
+  // Wire up
+  attachCommentHandlers();
+}
+
+function renderComment(c, myReactions, isReply) {
+  const a = c.author || { username: 'deleted', display_name: 'Deleted', badge: 'member' };
+  const av = avatarGradient(a.id || a.username);
+  const badge = a.badge === 'admin' ? '<span class="c-badge admin">Admin</span>'
+              : a.badge === 'vip'   ? '<span class="c-badge vip">VIP</span>'
+              : '';
+  const liked = myReactions.has(c.id);
+
+  let mediaHTML = '';
+  if (c.media_url && c.media_type === 'image') {
+    mediaHTML = `<div class="attach"><img src="${c.media_url}" alt=""><span class="attach-tag">Photo</span></div>`;
+  } else if (c.media_url && c.media_type === 'video') {
+    mediaHTML = `<div class="attach"><video src="${c.media_url}" controls playsinline></video></div>`;
+  } else if (c.media_url && c.media_type === 'audio') {
+    mediaHTML = `
+      <div class="audio-player" data-audio="${c.media_url}" data-dur="${c.media_duration_sec||0}">
+        <button class="audio-play"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg></button>
+        <div class="audio-wave">
+          ${Array.from({length:18}).map((_,i)=>`<span style="height:${20+Math.random()*70}%"></span>`).join('')}
+        </div>
+        <span class="audio-time">${fmtDur(c.media_duration_sec)}</span>
+      </div>`;
+  }
+
+  const avSize = isReply ? 'sm' : '';
+  const ringSize = isReply ? 'sm' : '';
+
+  return `
+    <div class="comment" data-comment="${c.id}">
+      <div class="ring ${ringSize}"><div class="avatar ${avSize}" style="background:${av}">${initials(a.username)}</div></div>
+      <div class="c-body">
+        <span class="c-username">@${escapeHTML(a.username)}</span>${badge}
+        <span class="c-text">${escapeHTML(c.body)}</span>
+        ${mediaHTML}
+        <div class="c-meta">
+          <span>${timeAgo(c.created_at)}</span>
+          <button class="reply" data-reply="${c.id}" data-username="${escapeHTML(a.username)}">Reply</button>
+          <button data-report="${c.id}">Report</button>
+        </div>
+      </div>
+      <div class="like-col">
+        <button class="heart ${liked?'liked':''}" data-like="${c.id}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        </button>
+        <span class="like-count">${c.reaction_count || 0}</span>
+      </div>
+    </div>`;
+}
+
+function fmtDur(s) {
+  s = parseInt(s||0);
+  return Math.floor(s/60) + ':' + String(s%60).padStart(2,'0');
+}
+
+/* ============================================================
+   COMMENT INTERACTIONS
+   ============================================================ */
+function attachCommentHandlers() {
+  document.querySelectorAll('[data-like]').forEach(btn => {
+    btn.onclick = async () => {
+      if (!currentUser) { openModal('login'); return; }
+      const cid = btn.dataset.like;
+      const isLiked = btn.classList.contains('liked');
+      if (isLiked) {
+        await sb.from('reactions').delete().eq('comment_id', cid).eq('user_id', currentUser.id).eq('emoji','❤️');
+        btn.classList.remove('liked');
+      } else {
+        await sb.from('reactions').insert({ comment_id: cid, user_id: currentUser.id, emoji: '❤️' });
+        btn.classList.add('liked');
+      }
+      // recount
+      const { count } = await sb.from('reactions').select('*', { count:'exact', head:true }).eq('comment_id', cid);
+      btn.parentElement.querySelector('.like-count').textContent = count || 0;
+    };
+  });
+
+  document.querySelectorAll('[data-reply]').forEach(btn => {
+    btn.onclick = () => {
+      if (!currentUser) { openModal('login'); return; }
+      const input = document.getElementById('commentInput');
+      input.value = '@' + btn.dataset.username + ' ';
+      input.focus();
+      input.dataset.parentId = btn.dataset.reply;
+    };
+  });
+
+  document.querySelectorAll('[data-report]').forEach(btn => {
+    btn.onclick = async () => {
+      if (!currentUser) { openModal('login'); return; }
+      await sb.from('reports').insert({
+        comment_id: btn.dataset.report,
+        reporter_id: currentUser.id,
+        reason: 'other',
+        notes: 'Reported from UI'
+      });
+      toast('Reported. Thank you.');
+    };
+  });
+
+  document.querySelectorAll('[data-toggle]').forEach(el => {
+    el.onclick = () => {
+      const id = el.dataset.toggle;
+      const box = document.getElementById('replies-' + id);
+      if (!box) return;
+      if (box.style.display === 'none') {
+        box.style.display = 'block';
+        el.textContent = 'Hide replies';
+      } else {
+        box.style.display = 'none';
+        el.textContent = 'View replies';
+      }
+    };
+  });
+
+  // Audio play
+  document.querySelectorAll('.audio-player').forEach(player => {
+    const btn = player.querySelector('.audio-play');
+    const timeEl = player.querySelector('.audio-time');
+    const bars = player.querySelectorAll('.audio-wave span');
+    const src = player.dataset.audio;
+    const dur = parseInt(player.dataset.dur || 0);
+    let audio = null, playing = false, ticker = null;
+
+    btn.onclick = () => {
+      if (!audio) { audio = new Audio(src); audio.crossOrigin = 'anonymous'; }
+      if (playing) {
+        audio.pause(); playing = false;
+        btn.classList.remove('playing');
+        btn.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg>';
+        clearInterval(ticker);
+      } else {
+        audio.play(); playing = true;
+        btn.classList.add('playing');
+        btn.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+        ticker = setInterval(() => {
+          const p = audio.currentTime / (audio.duration || dur || 1);
+          bars.forEach((b,i) => b.classList.toggle('played', i < Math.floor(p * bars.length)));
+          timeEl.textContent = fmtDur(audio.currentTime);
+        }, 200);
+        audio.onended = () => {
+          playing = false; clearInterval(ticker);
+          btn.classList.remove('playing');
+          btn.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg>';
+          bars.forEach(b => b.classList.remove('played'));
+          timeEl.textContent = fmtDur(dur);
+        };
+      }
+    };
+  });
+}
+
+/* ============================================================
+   POST COMMENT
+   ============================================================ */
+const input = document.getElementById('commentInput');
+const postBtn = document.getElementById('postBtn');
+
+input.addEventListener('input', () => {
+  postBtn.classList.toggle('active', input.value.trim().length > 0);
+});
+
+postBtn.onclick = async () => {
+  if (!currentUser) { openModal('login'); return; }
+  const body = input.value.trim();
+  if (!body) return;
+
+  postBtn.disabled = true;
+  postBtn.textContent = '…';
+
+  const payload = {
+    post_slug: POST_SLUG,
+    author_id: currentUser.id,
+    body: body,
+    parent_id: input.dataset.parentId || null
+  };
+
+  // Handle pending attachment
+  if (pendingAttachment) {
+    payload.media_url = pendingAttachment.url;
+    payload.media_type = pendingAttachment.type;
+    payload.media_duration_sec = pendingAttachment.duration || null;
+  }
+
+  const { error } = await sb.from('comments').insert(payload);
+  postBtn.disabled = false;
+  postBtn.textContent = 'Post';
+
+  if (error) { toast('Error: ' + error.message); console.error(error); return; }
+
+  input.value = '';
+  input.dataset.parentId = '';
+  postBtn.classList.remove('active');
+  pendingAttachment = null;
+  toast('Posted ✓');
+  loadComments();
+};
+
+/* ============================================================
+   GALLERY (IMAGE UPLOAD)
+   ============================================================ */
+let pendingAttachment = null;
+
+document.getElementById('galleryBtn').onclick = () => {
+  if (!currentUser) { openModal('login'); return; }
+  document.getElementById('galleryInput').click();
+};
+
+document.getElementById('galleryInput').onchange = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { toast('Image too large (5 MB max)'); return; }
+  toast('Uploading…');
+  const ext = file.name.split('.').pop();
+  const path = `${currentUser.id}/${Date.now()}.${ext}`;
+  const { error } = await sb.storage.from('comment-media').upload(path, file, { upsert: false });
+  if (error) { toast('Upload failed'); console.error(error); return; }
+  const { data } = sb.storage.from('comment-media').getPublicUrl(path);
+  pendingAttachment = { url: data.publicUrl, type: 'image' };
+  input.value = input.value + (input.value ? ' ' : '') + '📷 [photo attached]';
+  input.dispatchEvent(new Event('input'));
+  toast('Image ready — hit Post');
+  e.target.value = '';
+};
+
+/* ============================================================
+   VOICE NOTE (MEDIA RECORDER)
+   ============================================================ */
+let mediaRecorder = null;
+let recordedChunks = [];
+let recStart = 0, recTicker = null;
+const audioBtn = document.getElementById('audioBtn');
+const recBar = document.getElementById('recordingBar');
+const recTime = document.getElementById('recTime');
+
+audioBtn.onclick = async () => {
+  if (!currentUser) { openModal('login'); return; }
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    mediaRecorder.stop();
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    recordedChunks = [];
+    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+    mediaRecorder.onstop = async () => {
+      clearInterval(recTicker);
+      recBar.classList.remove('active');
+      audioBtn.classList.remove('recording');
+      stream.getTracks().forEach(t => t.stop());
+
+      const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+      if (blob.size < 1000) { toast('Too short'); return; }
+      if (blob.size > 5 * 1024 * 1024) { toast('Voice note too large (5 MB max)'); return; }
+
+      toast('Uploading voice note…');
+      const path = `${currentUser.id}/voice-${Date.now()}.webm`;
+      const { error } = await sb.storage.from('comment-media').upload(path, blob, { contentType: 'audio/webm' });
+      if (error) { toast('Upload failed'); console.error(error); return; }
+      const { data } = sb.storage.from('comment-media').getPublicUrl(path);
+      const dur = Math.round((Date.now() - recStart) / 1000);
+      pendingAttachment = { url: data.publicUrl, type: 'audio', duration: dur };
+      input.value = input.value + (input.value ? ' ' : '') + '🎙️ [voice note attached]';
+      input.dispatchEvent(new Event('input'));
+      toast('Voice note ready — hit Post');
+    };
+    mediaRecorder.start();
+    recStart = Date.now();
+    recBar.classList.add('active');
+    audioBtn.classList.add('recording');
+    recTime.textContent = '0:00';
+    recTicker = setInterval(() => {
+      const s = Math.floor((Date.now() - recStart) / 1000);
+      recTime.textContent = fmtDur(s);
+      if (s >= 60) mediaRecorder.stop(); // 60 sec cap
+    }, 500);
+  } catch (err) {
+    toast('Mic permission denied');
+    console.error(err);
+  }
+};
+
+/* ============================================================
+   GIF BUTTON — link to Tenor
+   ============================================================ */
+document.getElementById('gifBtn').onclick = () => {
+  if (!currentUser) { openModal('login'); return; }
+  window.open('https://tenor.com/search/nigerian-memes', '_blank', 'noopener');
+  toast('Copy a GIF URL, then paste it in the comment box.');
+};
+
+/* ============================================================
+   REALTIME
+   ============================================================ */
+function subscribeRealtime() {
+  if (realtimeChannel) sb.removeChannel(realtimeChannel);
+  realtimeChannel = sb
+    .channel('comments-live')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments', filter: `post_slug=eq.${POST_SLUG}` },
+      () => { loadComments(); })
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'comments', filter: `post_slug=eq.${POST_SLUG}` },
+      () => { loadComments(); })
+    .subscribe();
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+(async () => {
+  await loadSession();
+  await loadComments();
+  subscribeRealtime();
+
+  sb.auth.onAuthStateChange(async (event) => {
+    if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+      await loadSession();
+      await loadComments();
+    }
+  });
+})();
+</script>
+</body>
+</html>
